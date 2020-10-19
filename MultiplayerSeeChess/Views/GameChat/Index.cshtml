@@ -1,0 +1,194 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+<div class="d-flex flex-column align-items-center">
+    <h2 class="p-2">Tic-tac-toe</h2>
+    <h4 id="result"></h4>
+    <div class="p-2">
+        <table id="gameTable">
+        </table>
+    </div>
+    <div id="statusLine" class="p-2"></div>
+    <hr />
+    <h2 class="p-2">Chat</h2>
+    <div class="p-2">
+
+        <form class="p-2">
+            <input type="text" id="inputText" />
+            <button type="submit" id="sendButton">Send</button>
+        </form>
+    </div>
+
+    <ul id="messagesList"></ul>
+</div>
+
+
+@section Scripts{
+    <script>
+        var elem = document.getElementById("gameTable");
+        var gameId = "";
+        var connection = new signalR.HubConnectionBuilder().withUrl("/Tic-tac-toe").build();
+        var countOfWins = 0;
+        var countOfLoses = 0;
+
+        document.getElementById("sendButton").disabled = true;
+
+        connection.start().then(function () {
+            document.getElementById("sendButton").disabled = false;
+        }).catch(function (err) {
+            return console.error(err.toString());
+        });
+
+        document.getElementById("sendButton").addEventListener("click", function (event) {
+            var message = document.getElementById("inputText").value;
+            document.getElementById("inputText").value = "";
+            connection.invoke("Send", message).catch(function (err) {
+                return console.error(err.toString());
+              
+            });
+            event.preventDefault();
+        });
+
+        connection.on("NewMessage", function (message) {
+            var msg = message.content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            var encodedMsg = msg;
+            var li = document.createElement("li");
+            li.textContent = encodedMsg;
+            document.getElementById("messagesList").appendChild(li);
+        });
+
+        connection.on("connClose", function (message) {
+            printOnStatusLine(message);
+            setTimeout(function () {
+                document.getElementById("statusLine").innerHTML = ""; location.reload();
+            }, 3500);
+        });
+        connection.on("statusLine", function (message) {
+            printOnStatusLine(message);
+            setTimeout(function () { document.getElementById("statusLine").innerHTML = ""; }, 3000);
+        });
+
+        connection.on("lose", function (point) {
+            setPoint(point);
+            var msg = "LOSE!";
+            var encodedMsg = msg;
+            var h = document.createElement("h3");
+            h.textContent = encodedMsg;
+            document.getElementById("statusLine").appendChild(h);
+            countOfLoses++;
+            setResult();
+            disableOnClick();
+            setTimeout(function () {
+                document.getElementById("statusLine").innerHTML = ""; clearTable();
+            }, 1500);
+        });
+
+        connection.on("end", function (point) {
+            setPoint(point);
+            var msg = "End of turns!";
+            var h = document.createElement("h3");
+            h.textContent = msg;
+            document.getElementById("statusLine").appendChild(h);
+            disableOnClick();
+            setTimeout(function () {
+                document.getElementById("statusLine").innerHTML = ""; clearTable();
+            }, 1500);
+        });
+
+        connection.on("win", function (point) {
+            setPoint(point);
+            var msg = "WIN!";
+            var h = document.createElement("h3");
+            h.textContent = msg;
+            document.getElementById("statusLine").appendChild(h);
+            countOfWins++;
+            setResult();
+            disableOnClick();
+            setTimeout(function () {
+                document.getElementById("statusLine").innerHTML = ""; clearTable();
+            }, 1500);
+        });
+
+        connection.on("turn", function (point) {
+            setPoint(point);
+        });
+
+        connection.on("NewGame", function (gameIds) {
+            gameId = gameIds.content;
+            for (let i = 0; i < 3; i++) {
+                var row = document.createElement("tr");
+                row.classList.add("row");
+                for (let j = 0; j < 3; j++) {
+                    var node = document.createElement("td");
+                    //var textnode = document.createTextNode(0);
+                    var idStr = idToString(i, j);
+                    node.id = idStr;
+                    node.onclick = function () {
+                        action(this.id);
+                    };
+                    //node.appendChild(textnode);
+                    node.classList.add("cell");
+                    row.appendChild(node);
+                }
+                elem.appendChild(row);
+            };
+        });
+
+
+        function setPoint(point) {
+            var pointId = point.x + "-" + point.y;
+            document.getElementById(pointId).innerHTML = point.symbol;
+        }
+
+        function action(elemId) {
+            connection.invoke("Turn", gameId, elemId);
+        }
+
+        function idToString(x, y) {
+            return String(x) + "-" + String(y);
+        }
+
+        function printOnStatusLine(message) {
+            var msg = message.content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            var encodedMsg = msg;
+            var h = document.createElement("h3");
+            h.textContent = encodedMsg;
+            document.getElementById("statusLine").appendChild(h);
+        }
+
+        function disableOnClick() {
+            var cells = document.getElementsByClassName('cell');
+            for (var i = 0; i < cells.length; i++) {
+                cells[i].onclick = "#";
+            }
+        }
+        function enableOnClick() {
+            var cells = document.getElementsByClassName('cell');
+            for (var i = 0; i < cells.length; i++) {
+                cells[i].onclick = function () {
+                    action(this.id);
+                };
+            }
+        }
+        function clearTable() {
+            var cells = document.getElementsByClassName('cell');
+            for (var i = 0; i < cells.length; i++) {
+                cells[i].innerHTML = "";
+            }
+            enableOnClick();
+        }
+
+        function clearStatusLine() {
+            document.getElementById("statusLine").innerHTML = "";
+        }
+
+        function setResult() {
+            var s ="s";
+            var resultElem = document.getElementById("result");
+            var txt = 'Wins: ' + countOfWins + '/Loses: ' + countOfLoses;
+            resultElem.innerHTML = txt;
+        }
+    </script>
+}
