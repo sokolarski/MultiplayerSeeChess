@@ -1,2 +1,2 @@
 # MultiplayerSeeChess
-Simple multiplayer game with chat SeeChes ("Tic-Tac-Toe"). Real time app with SignalR.
+Simple multiplayer game SeeChess ("Tic-Tac-Toe") with chat. Real time app with SignalR.
