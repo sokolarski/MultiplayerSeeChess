@@ -358,3 +358,6 @@ appsettings.Production.json
 *.min.css
 *.min.js
 /.vs
+/MultiplayerSeeChess/obj
+/MultiplayerSeeChess/bin
+/MultiplayerSeeChess/appsettings.json
